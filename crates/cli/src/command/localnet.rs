@@ -1,7 +1,7 @@
 use anyhow::Error;
 use fehler::throws;
 use tokio::signal;
-use trdelnik_client::*;
+use trdelnik_sandbox_client::*;
 
 #[throws]
 pub async fn localnet() {

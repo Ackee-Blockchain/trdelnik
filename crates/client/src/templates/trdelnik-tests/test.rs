@@ -1,6 +1,6 @@
 use fehler::throws;
 use program_client;
-use trdelnik_client::{anyhow::Result, *};
+use trdelnik_sandbox_client::{anyhow::Result, *};
 // @todo: do not forget to import your program crate (also in the ../Cargo.toml)
 
 // @todo: create and deploy your fixture

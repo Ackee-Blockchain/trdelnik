@@ -1,6 +1,6 @@
 use anyhow::Error;
 use fehler::throws;
-use trdelnik_client::*;
+use trdelnik_sandbox_client::*;
 
 #[throws]
 pub async fn build(root: String) {
