@@ -2,7 +2,6 @@ use anchor_spl::token;
 use escrow;
 use fehler::throws;
 use program_client::escrow_instruction;
-use std::mem;
 use trdelnik_client::{anyhow::Result, *};
 
 #[throws]
@@ -85,7 +84,9 @@ async fn test_happy_path1(#[future] init_fixture: Result<Fixture>) {
     .await?;
 
     let escrow = fixture.get_escrow().await?;
-    let alice_token_a_account = fixture.get_token_account(fixture.alice_token_a_account).await?;
+    let alice_token_a_account = fixture
+        .get_token_account(fixture.alice_token_a_account)
+        .await?;
 
     assert_eq!(alice_token_a_account.owner, fixture.pda);
     assert_eq!(escrow.initializer_key, fixture.alice_wallet.pubkey());
@@ -116,10 +117,18 @@ async fn test_happy_path1(#[future] init_fixture: Result<Fixture>) {
     )
     .await?;
 
-    let alice_token_a_account = fixture.get_token_account(fixture.alice_token_a_account).await?;
-    let alice_token_b_account = fixture.get_token_account(fixture.alice_token_b_account).await?;
-    let bob_token_a_account = fixture.get_token_account(fixture.bob_token_a_account).await?;
-    let bob_token_b_account = fixture.get_token_account(fixture.bob_token_b_account).await?;
+    let alice_token_a_account = fixture
+        .get_token_account(fixture.alice_token_a_account)
+        .await?;
+    let alice_token_b_account = fixture
+        .get_token_account(fixture.alice_token_b_account)
+        .await?;
+    let bob_token_a_account = fixture
+        .get_token_account(fixture.bob_token_a_account)
+        .await?;
+    let bob_token_b_account = fixture
+        .get_token_account(fixture.bob_token_b_account)
+        .await?;
 
     assert_eq!(alice_token_a_account.owner, fixture.alice_wallet.pubkey());
     assert_eq!(bob_token_a_account.amount, 500);
@@ -155,11 +164,13 @@ async fn test_happy_path2(#[future] init_fixture: Result<Fixture>) {
         fixture.pda,
         fixture.escrow_account.pubkey(),
         token::ID,
-        []
+        [],
     )
     .await?;
 
-    let alice_token_a_account = fixture.get_token_account(fixture.alice_token_a_account).await?;
+    let alice_token_a_account = fixture
+        .get_token_account(fixture.alice_token_a_account)
+        .await?;
 
     assert_eq!(alice_token_a_account.owner, fixture.alice_wallet.pubkey());
     assert_eq!(alice_token_a_account.amount, 500);
@@ -211,18 +222,10 @@ impl Fixture {
 
     #[throws]
     async fn deploy(&mut self) {
-        let reader = Reader::new();
-        let mut program_data = reader.program_data("escrow").await?;
-
-        self.client
-            .airdrop(self.client.payer().pubkey(), 5_000_000_000)
-            .await?;
         self.client
             .airdrop(self.alice_wallet.pubkey(), 5_000_000_000)
             .await?;
-        self.client
-            .deploy(self.program.clone(), mem::take(&mut program_data))
-            .await?;
+        self.client.deploy_by_name(&self.program, "escrow").await?;
     }
 
     #[throws]
@@ -234,8 +237,6 @@ impl Fixture {
 
     #[throws]
     async fn get_token_account(&self, key: Pubkey) -> token::TokenAccount {
-        self.client
-            .account_data::<token::TokenAccount>(key)
-            .await?
+        self.client.account_data::<token::TokenAccount>(key).await?
     }
 }

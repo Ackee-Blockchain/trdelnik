@@ -3500,7 +3500,7 @@ dependencies = [
 
 [[package]]
 name = "trdelnik-client"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "anchor-client",
  "anyhow",
@@ -3518,6 +3518,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "solana-account-decoder",
  "solana-cli-output",
  "solana-sdk",
  "solana-transaction-status",
@@ -3533,7 +3534,9 @@ dependencies = [
 
 [[package]]
 name = "trdelnik-test"
-version = "0.1.0"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8adb3589406511395a0dc8ac1594f693d6efcf6b4e8b646870dbb80f1a51a3a9"
 dependencies = [
  "darling",
  "proc-macro2 1.0.39",

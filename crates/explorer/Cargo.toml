@@ -2,6 +2,10 @@
 name = "trdelnik-explorer"
 version = "0.1.0"
 edition = "2021"
+authors = ["AckeeBlockchain <hello@ackeeblockchain.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/Ackee-Blockchain/trdelnik"
+description = "Trdelnik explorer for Solana"
 
 [dependencies]
 solana-cli-config = "^1.9"

@@ -1,7 +1,11 @@
 [package]
 name = "trdelnik-client"
-version = "0.1.0"
+version = "0.1.4"
 edition = "2018"
+authors = ["AckeeBlockchain <hello@ackeeblockchain.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/Ackee-Blockchain/trdelnik"
+description = "Rust testing client for Anchor programs"
 
 [build-dependencies]
 vergen = { version = "6", features = ["build", "git"], default-features = false }
@@ -11,7 +15,7 @@ anyhow = { version = "1.0.45", features = ["std"], default-features = false }
 pretty_assertions = "1.1.0"
 
 [dependencies]
-trdelnik-test = { path = "../test" }
+trdelnik-test = "0.1.1"
 solana-sdk = "^1.9"
 solana-cli-output = "^1.9"
 solana-transaction-status = "^1.9"

@@ -1,0 +1,11 @@
+[package]
+name = "program_client"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+trdelnik-client = "0.1.0"
+
+[dependencies.escrow]
+path = "../programs/escrow"
+features = ["no-entrypoint"]

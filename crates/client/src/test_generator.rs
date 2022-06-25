@@ -118,7 +118,7 @@ impl TestGenerator {
         let toml_path = workspace_path.join(CARGO_TOML);
         let toml_content = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/src/templates/trdelnik-tests/Cargo.toml"
+            "/src/templates/trdelnik-tests/Cargo.tmp"
         ));
         self.create_file(&toml_path, CARGO_TOML, toml_content)
             .await?;
