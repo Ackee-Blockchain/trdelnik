@@ -5,6 +5,7 @@ use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
 use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_program::{program_stubs, system_program};
+use trdelnik_client::anchor_lang::AccountDeserialize;
 use trdelnik_client::anchor_lang::Discriminator;
 use trdelnik_client::fuzzing::*;
 use trdelnik_tests::native_account_data::*;
@@ -64,8 +65,18 @@ fn main() {
             data[8] = fuzz_data.param1;
             data[9] = fuzz_data.param2;
 
-            let res = entry(&PROGRAM_ID, &account_infos, &data);
-            assert_matches!(res, Ok(()));
+            let _res = entry(&PROGRAM_ID, &account_infos, &data);
+
+            // This will check the result
+            //assert_matches!(res, Ok(()));
+
+            // Lets play with actuall stored values
+            let counter_account_data = NativeAccountData::new_from_account_info(&account_infos[0]);
+
+            let counter =
+                fuzzer::Counter::try_deserialize(&mut counter_account_data.data.as_slice())
+                    .unwrap();
+            assert_ne!(counter.count, 15);
         });
     }
 }
@@ -181,3 +192,56 @@ fn test_syscall_stubs() {
         program_stubs::set_syscall_stubs(Box::new(TestSyscallStubs {}));
     });
 }
+
+// fn main() {
+//     test_syscall_stubs();
+//     // Data setup this way will ensure that create_account/transfer/allocate ...
+//     // do not have to be called = no invoke_signed invoked
+//     let counter = NativeAccountData::new(
+//         (8 + 40) as usize,
+//         PROGRAM_ID,
+//         true,
+//         true,
+//         false,
+//         5 * LAMPORTS_PER_SOL,
+//     );
+//     let user = NativeAccountData::new(
+//         0,
+//         system_program::id(),
+//         true,
+//         true,
+//         false,
+//         LAMPORTS_PER_SOL * 5,
+//     );
+//     let system_program = create_program_account(SYSTEM_PROGRAM_ID);
+
+//     let mut accounts = [counter, user, system_program];
+
+//     // let mut account_data = accounts
+//     //     .iter()
+//     //     .map(NativeAccountData::new_from_account_info)
+//     //     .collect::<Vec<_>>();
+//     let account_infos = accounts
+//         .iter_mut()
+//         .map(NativeAccountData::as_account_info)
+//         .collect::<Vec<_>>();
+
+//     let data: [u8; 8] = fuzzer::instruction::Initialize::DISCRIMINATOR;
+//     let res = entry(&PROGRAM_ID, &account_infos, &data);
+
+//     assert_matches!(res, Ok(()));
+
+//     let mut data: [u8; 10] = [0u8; 10];
+//     data[..8].copy_from_slice(&fuzzer::instruction::Update::DISCRIMINATOR);
+//     data[8] = 15;
+//     data[9] = 253;
+
+//     let res = entry(&PROGRAM_ID, &account_infos, &data);
+//     assert_matches!(res, Ok(()));
+
+//     let counter_account_data = NativeAccountData::new_from_account_info(&account_infos[0]);
+
+//     let counter =
+//         fuzzer::Counter::try_deserialize(&mut counter_account_data.data.as_slice()).unwrap();
+//     assert_matches!(counter.count, 15);
+// }
