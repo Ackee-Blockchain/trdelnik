@@ -7,6 +7,9 @@ edition = "2021"
 [dependencies]
 assert_matches = "1.4.0"
 solana-program = "1.16.9"
+serde = "1.0.192"
+bincode = "1.3.3"
+solana-system-program = "1.16.9"
 [dependencies.trdelnik-client]
 path = "../../../crates/client"
 features = ["fuzzing"]
