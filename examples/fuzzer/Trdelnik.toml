@@ -2,8 +2,8 @@
 validator_startup_timeout = 15000
 
 [fuzz]
-iterations = 500
+iterations = 100000
 timeout = 25
 keep_output = false
 verbose = false
-exit_upon_crash = true
+exit_upon_crash = false

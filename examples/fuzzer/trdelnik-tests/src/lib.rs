@@ -1,0 +1,4 @@
+#![allow(clippy::arithmetic_side_effects)]
+pub mod native_account_data;
+
+pub use native_account_data::*;
