@@ -1,0 +1,30 @@
+[[bin]]
+name = "fuzz_target"
+path = "src/fuzz_target.rs"
+test = false
+doc = false
+
+[package]
+name = "trdelnik-tests"
+version = "0.1.0"
+description = "Created with Trdelnik"
+edition = "2021"
+
+[dependencies]
+assert_matches = "1.4.0"
+solana-program = "1.16.9"
+spl-token = "4.0.0"
+
+[dependencies.trdelnik-client]
+path = "../../../crates/client"
+features = ["fuzzing"]
+
+[dependencies.program_client]
+path = "../.program_client"
+
+[dependencies.fuzzer_with_token]
+path = "../programs/fuzzer_with_token"
+
+[dev-dependencies]
+fehler = "1.0.0"
+rstest = "0.12.0"

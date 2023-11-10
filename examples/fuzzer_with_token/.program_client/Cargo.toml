@@ -1,0 +1,10 @@
+[package]
+name = "program_client"
+version = "0.1.0"
+edition = "2018"
+[dependencies.trdelnik-client]
+path = "../../../crates/client"
+
+[dependencies.fuzzer_with_token]
+path = "../programs/fuzzer_with_token"
+features = ["no-entrypoint"]

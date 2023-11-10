@@ -1,0 +1,11 @@
+[test]
+validator_startup_timeout = 15000
+
+
+# set for default values
+[fuzz]
+timeout = 1000
+iterations = 1000
+keep_output = false
+verbose = false
+exit_upon_crash = false
