@@ -72,9 +72,10 @@ pub struct Initialize<'info> {
     pub user_a_token_account: Account<'info, TokenAccount>,
 
     #[account(
-        mut,
+        init,
         token::mint = mint,
         token::authority = user_b,
+        payer = user_a
     )]
     pub user_b_token_account: Account<'info, TokenAccount>,
 

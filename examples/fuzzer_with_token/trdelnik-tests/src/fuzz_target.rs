@@ -45,22 +45,11 @@ impl program_stubs::SyscallStubs for TestSyscallStubs {
         _signers_seeds: &[&[&[u8]]],
     ) -> ProgramResult {
         if instruction.program_id == spl_token::id() {
-            let instr = TokenInstruction::unpack(&instruction.data).unwrap();
-            match instr {
-                TokenInstruction::Transfer { amount } => {
-                    spl_token::processor::Processor::process_transfer(
-                        &instruction.program_id,
-                        account_infos,
-                        amount,
-                        None,
-                    )?;
-                    Ok(())
-                }
-                _ => {
-                    self.sol_log("SyscallStubs: sol_invoke_signed() not available");
-                    Ok(())
-                }
-            }
+            spl_token::processor::Processor::process(
+                &instruction.program_id,
+                account_infos,
+                &instruction.data,
+            )
         } else {
             self.sol_log("SyscallStubs: sol_invoke_signed() not available");
             Ok(())
@@ -134,17 +123,17 @@ fn main() {
                 TokenAccount::LEN,
                 spl_token::id(),
                 true,
-                false,
+                true,
                 false,
                 LAMPORTS_PER_SOL * 5,
             );
 
             const INITIAL_AMOUNT_USER_A: u64 = LAMPORTS_PER_SOL * 58;
             const INITIAL_AMOUNT_USER_B: u64 = LAMPORTS_PER_SOL * 14;
-            //const TRANSFER_AMOUNT: u8 = 5;
+            const TRANSFER_AMOUNT: u8 = 120;
 
             create_token_account(&mut mint, &mut token_a, &user_a.key, INITIAL_AMOUNT_USER_A);
-            create_token_account(&mut mint, &mut token_b, &user_b.key, INITIAL_AMOUNT_USER_B);
+            //create_token_account(&mut mint, &mut token_b, &user_b.key, INITIAL_AMOUNT_USER_B);
 
             let system_program = create_program_account(SYSTEM_PROGRAM_ID);
             let token_program = create_program_account(spl_token::id());
@@ -175,8 +164,8 @@ fn main() {
 
             let mut data: [u8; 10] = [0u8; 10];
             data[..8].copy_from_slice(&fuzzer_with_token::instruction::Update::DISCRIMINATOR);
-            data[8] = 15;
-            data[9] = 18;
+            data[8] = 8;
+            data[9] = 51;
 
             let _res = entry(&PROGRAM_ID, &account_infos, &data);
 
@@ -184,34 +173,31 @@ fn main() {
             assert_matches!(res, Ok(()));
 
             // Lets play with actuall stored values
-            // let counter_account_data = NativeAccountData::new_from_account_info(&account_infos[0]);
+            let counter_account_data = NativeAccountData::new_from_account_info(&account_infos[0]);
             let user_a_token_data = NativeAccountData::new_from_account_info(&account_infos[3]);
             let user_b_token_data = NativeAccountData::new_from_account_info(&account_infos[4]);
 
-            // let counter = fuzzer_with_token::Counter::try_deserialize(
-            //     &mut counter_account_data.data.as_slice(),
-            // )
-            // .unwrap();
+            let counter = fuzzer_with_token::Counter::try_deserialize(
+                &mut counter_account_data.data.as_slice(),
+            )
+            .unwrap();
 
             let user_a_token_account =
                 TokenAccount::unpack(user_a_token_data.data.as_slice()).unwrap();
             let user_b_token_account =
                 TokenAccount::unpack(user_b_token_data.data.as_slice()).unwrap();
 
-            //assert_ne!(counter.count, 15);
+            assert_ne!(counter.count, 15);
             assert_eq!(
                 user_a_token_account.amount,
                 INITIAL_AMOUNT_USER_A - fuzz_data.param1 as u64
             );
-            assert_eq!(
-                user_b_token_account.amount,
-                INITIAL_AMOUNT_USER_B + fuzz_data.param1 as u64
-            );
+            assert_eq!(user_b_token_account.amount, fuzz_data.param1 as u64);
         });
     }
 }
 
-// this main is used for testing purpose
+//this main is used for testing purpose
 // fn main() {
 //     test_syscall_stubs();
 
@@ -268,7 +254,7 @@ fn main() {
 //         TokenAccount::LEN,
 //         spl_token::id(),
 //         true,
-//         false,
+//         true,
 //         false,
 //         LAMPORTS_PER_SOL * 5,
 //     );
@@ -278,7 +264,7 @@ fn main() {
 //     const TRANSFER_AMOUNT: u8 = 120;
 
 //     create_token_account(&mut mint, &mut token_a, &user_a.key, INITIAL_AMOUNT_USER_A);
-//     create_token_account(&mut mint, &mut token_b, &user_b.key, INITIAL_AMOUNT_USER_B);
+//     //create_token_account(&mut mint, &mut token_b, &user_b.key, INITIAL_AMOUNT_USER_B);
 
 //     let system_program = create_program_account(SYSTEM_PROGRAM_ID);
 //     let token_program = create_program_account(spl_token::id());
@@ -334,8 +320,5 @@ fn main() {
 //         user_a_token_account.amount,
 //         INITIAL_AMOUNT_USER_A - TRANSFER_AMOUNT as u64
 //     );
-//     assert_eq!(
-//         user_b_token_account.amount,
-//         INITIAL_AMOUNT_USER_B + TRANSFER_AMOUNT as u64
-//     );
+//     assert_eq!(user_b_token_account.amount, TRANSFER_AMOUNT as u64);
 // }
