@@ -5,10 +5,7 @@ use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, native_token::LAMPORTS_PER_SOL,
     program_pack::Pack, program_stubs, system_program,
 };
-use spl_token::{
-    instruction::TokenInstruction,
-    state::{Account as TokenAccount, Mint},
-};
+use spl_token::state::{Account as TokenAccount, Mint};
 use trdelnik_client::{
     anchor_lang::{AccountDeserialize, Discriminator},
     fuzzing::*,
@@ -16,6 +13,10 @@ use trdelnik_client::{
 use trdelnik_tests::{
     native_account_data::*, native_mint::create_mint, native_token::create_token_account,
 };
+
+// I think we cannot intercept system program instructions such as create, allocate, assign from
+// https://github.com/solana-labs/solana/blob/b5256997f8d86c9bfbfa7467ba8a1f72140d4bd8/programs/system/src/system_processor.rs
+// so we need to defined this functionality within native_account_data
 
 #[derive(Arbitrary)]
 pub struct FuzzData {
@@ -119,7 +120,7 @@ fn main() {
             );
 
             // user_b token account which is expected not initialized
-            let mut token_b = NativeAccountData::new(
+            let token_b = NativeAccountData::new(
                 TokenAccount::LEN,
                 spl_token::id(),
                 true,
@@ -129,8 +130,8 @@ fn main() {
             );
 
             const INITIAL_AMOUNT_USER_A: u64 = LAMPORTS_PER_SOL * 58;
-            const INITIAL_AMOUNT_USER_B: u64 = LAMPORTS_PER_SOL * 14;
-            const TRANSFER_AMOUNT: u8 = 120;
+            const _INITIAL_AMOUNT_USER_B: u64 = LAMPORTS_PER_SOL * 14;
+            const _TRANSFER_AMOUNT: u8 = 120;
 
             create_token_account(&mut mint, &mut token_a, &user_a.key, INITIAL_AMOUNT_USER_A);
             //create_token_account(&mut mint, &mut token_b, &user_b.key, INITIAL_AMOUNT_USER_B);
