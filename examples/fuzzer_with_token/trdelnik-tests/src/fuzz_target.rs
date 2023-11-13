@@ -118,6 +118,8 @@ fn main() {
                 false,
                 LAMPORTS_PER_SOL * 5,
             );
+            const INITIAL_AMOUNT_USER_A: u64 = LAMPORTS_PER_SOL * 58;
+            create_token_account(&mut mint, &mut token_a, &user_a.key, INITIAL_AMOUNT_USER_A);
 
             // user_b token account which is expected not initialized
             let token_b = NativeAccountData::new(
@@ -128,13 +130,6 @@ fn main() {
                 false,
                 LAMPORTS_PER_SOL * 5,
             );
-
-            const INITIAL_AMOUNT_USER_A: u64 = LAMPORTS_PER_SOL * 58;
-            const _INITIAL_AMOUNT_USER_B: u64 = LAMPORTS_PER_SOL * 14;
-            const _TRANSFER_AMOUNT: u8 = 120;
-
-            create_token_account(&mut mint, &mut token_a, &user_a.key, INITIAL_AMOUNT_USER_A);
-            //create_token_account(&mut mint, &mut token_b, &user_b.key, INITIAL_AMOUNT_USER_B);
 
             let system_program = create_program_account(SYSTEM_PROGRAM_ID);
             let token_program = create_program_account(spl_token::id());
@@ -155,45 +150,46 @@ fn main() {
                 .map(NativeAccountData::as_account_info)
                 .collect::<Vec<_>>();
 
+            // **********************************************************************************
+            // Initialize instr
             let mut data: [u8; 9] = [0u8; 9];
+            // first 8 bytes for instruction
             data[..8].copy_from_slice(&fuzzer_with_token::instruction::Initialize::DISCRIMINATOR);
+            // lat byte for instruction input = amount that will be transfered from A to B
             data[8] = fuzz_data.param1;
-
             let res = entry(&PROGRAM_ID, &account_infos, &data);
-
             assert_matches!(res, Ok(()));
 
-            let mut data: [u8; 10] = [0u8; 10];
-            data[..8].copy_from_slice(&fuzzer_with_token::instruction::Update::DISCRIMINATOR);
-            data[8] = 8;
-            data[9] = 51;
+            // **********************************************************************************
+            // Deserialize Data
+            let counter = NativeAccountData::new_from_account_info(&account_infos[0]);
+            let token_a = NativeAccountData::new_from_account_info(&account_infos[3]);
+            let token_b = NativeAccountData::new_from_account_info(&account_infos[4]);
 
-            let _res = entry(&PROGRAM_ID, &account_infos, &data);
+            let counter_data =
+                fuzzer_with_token::Counter::try_deserialize(&mut counter.data.as_slice()).unwrap();
 
-            // This will check the result
-            assert_matches!(res, Ok(()));
+            let token_a_data = TokenAccount::unpack(token_a.data.as_slice()).unwrap();
+            let token_b_data = TokenAccount::unpack(token_b.data.as_slice()).unwrap();
 
-            // Lets play with actuall stored values
-            let counter_account_data = NativeAccountData::new_from_account_info(&account_infos[0]);
-            let user_a_token_data = NativeAccountData::new_from_account_info(&account_infos[3]);
-            let user_b_token_data = NativeAccountData::new_from_account_info(&account_infos[4]);
-
-            let counter = fuzzer_with_token::Counter::try_deserialize(
-                &mut counter_account_data.data.as_slice(),
-            )
-            .unwrap();
-
-            let user_a_token_account =
-                TokenAccount::unpack(user_a_token_data.data.as_slice()).unwrap();
-            let user_b_token_account =
-                TokenAccount::unpack(user_b_token_data.data.as_slice()).unwrap();
-
-            assert_ne!(counter.count, 15);
+            // Counter initialized to 1
+            assert_eq!(counter_data.count, 1);
+            // User A sent tokens
             assert_eq!(
-                user_a_token_account.amount,
+                token_a_data.amount,
                 INITIAL_AMOUNT_USER_A - fuzz_data.param1 as u64
             );
-            assert_eq!(user_b_token_account.amount, fuzz_data.param1 as u64);
+            // User B received tokens
+            assert_eq!(token_b_data.amount, fuzz_data.param1 as u64);
+
+            // Create Instr Data for Update instruction
+            let mut data: [u8; 10] = [0u8; 10];
+            data[..8].copy_from_slice(&fuzzer_with_token::instruction::Update::DISCRIMINATOR);
+            data[8] = fuzz_data.param1;
+            data[9] = fuzz_data.param2;
+
+            let res = entry(&PROGRAM_ID, &account_infos, &data);
+            assert_eq!(res, Ok(()));
         });
     }
 }
@@ -249,9 +245,11 @@ fn main() {
 //         false,
 //         LAMPORTS_PER_SOL * 5,
 //     );
+//     const INITIAL_AMOUNT_USER_A: u64 = LAMPORTS_PER_SOL * 58;
+//     create_token_account(&mut mint, &mut token_a, &user_a.key, INITIAL_AMOUNT_USER_A);
 
 //     // user_b token account which is expected not initialized
-//     let mut token_b = NativeAccountData::new(
+//     let token_b = NativeAccountData::new(
 //         TokenAccount::LEN,
 //         spl_token::id(),
 //         true,
@@ -259,13 +257,6 @@ fn main() {
 //         false,
 //         LAMPORTS_PER_SOL * 5,
 //     );
-
-//     const INITIAL_AMOUNT_USER_A: u64 = LAMPORTS_PER_SOL * 58;
-//     const INITIAL_AMOUNT_USER_B: u64 = LAMPORTS_PER_SOL * 14;
-//     const TRANSFER_AMOUNT: u8 = 120;
-
-//     create_token_account(&mut mint, &mut token_a, &user_a.key, INITIAL_AMOUNT_USER_A);
-//     //create_token_account(&mut mint, &mut token_b, &user_b.key, INITIAL_AMOUNT_USER_B);
 
 //     let system_program = create_program_account(SYSTEM_PROGRAM_ID);
 //     let token_program = create_program_account(spl_token::id());
@@ -286,40 +277,41 @@ fn main() {
 //         .map(NativeAccountData::as_account_info)
 //         .collect::<Vec<_>>();
 
+//     // **********************************************************************************
+//     // Initialize instr
 //     let mut data: [u8; 9] = [0u8; 9];
+//     // first 8 bytes for instruction
 //     data[..8].copy_from_slice(&fuzzer_with_token::instruction::Initialize::DISCRIMINATOR);
-//     data[8] = TRANSFER_AMOUNT;
-
+//     // lat byte for instruction input = amount that will be transfered from A to B
+//     data[8] = 5;
 //     let res = entry(&PROGRAM_ID, &account_infos, &data);
-
 //     assert_matches!(res, Ok(()));
 
+//     // **********************************************************************************
+//     // Deserialize Data
+//     let counter = NativeAccountData::new_from_account_info(&account_infos[0]);
+//     let token_a = NativeAccountData::new_from_account_info(&account_infos[3]);
+//     let token_b = NativeAccountData::new_from_account_info(&account_infos[4]);
+
+//     let counter_data =
+//         fuzzer_with_token::Counter::try_deserialize(&mut counter.data.as_slice()).unwrap();
+
+//     let token_a_data = TokenAccount::unpack(token_a.data.as_slice()).unwrap();
+//     let token_b_data = TokenAccount::unpack(token_b.data.as_slice()).unwrap();
+
+//     // Counter initialized to 1
+//     assert_eq!(counter_data.count, 1);
+//     // User A sent tokens
+//     assert_eq!(token_a_data.amount, INITIAL_AMOUNT_USER_A - 5 as u64);
+//     // User B received tokens
+//     assert_eq!(token_b_data.amount, 5 as u64);
+
+//     // Create Instr Data for Update instruction
 //     let mut data: [u8; 10] = [0u8; 10];
 //     data[..8].copy_from_slice(&fuzzer_with_token::instruction::Update::DISCRIMINATOR);
-//     data[8] = 8;
-//     data[9] = 51;
+//     data[8] = 51;
+//     data[9] = 14;
 
-//     let _res = entry(&PROGRAM_ID, &account_infos, &data);
-
-//     // This will check the result
-//     assert_matches!(res, Ok(()));
-
-//     // Lets play with actuall stored values
-//     let counter_account_data = NativeAccountData::new_from_account_info(&account_infos[0]);
-//     let user_a_token_data = NativeAccountData::new_from_account_info(&account_infos[3]);
-//     let user_b_token_data = NativeAccountData::new_from_account_info(&account_infos[4]);
-
-//     let counter =
-//         fuzzer_with_token::Counter::try_deserialize(&mut counter_account_data.data.as_slice())
-//             .unwrap();
-
-//     let user_a_token_account = TokenAccount::unpack(user_a_token_data.data.as_slice()).unwrap();
-//     let user_b_token_account = TokenAccount::unpack(user_b_token_data.data.as_slice()).unwrap();
-
-//     assert_ne!(counter.count, 15);
-//     assert_eq!(
-//         user_a_token_account.amount,
-//         INITIAL_AMOUNT_USER_A - TRANSFER_AMOUNT as u64
-//     );
-//     assert_eq!(user_b_token_account.amount, TRANSFER_AMOUNT as u64);
+//     let res = entry(&PROGRAM_ID, &account_infos, &data);
+//     assert_eq!(res, Ok(()));
 // }

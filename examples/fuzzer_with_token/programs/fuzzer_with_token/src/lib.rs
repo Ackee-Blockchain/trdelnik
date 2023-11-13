@@ -12,7 +12,7 @@ pub mod fuzzer_with_token {
     pub fn initialize(ctx: Context<Initialize>, transfer_amount: u8) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
 
-        counter.count = 0;
+        counter.count = 1;
         counter.authority = ctx.accounts.user_a.key();
         transfer(
             CpiContext::new(
