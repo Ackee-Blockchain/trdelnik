@@ -7,10 +7,22 @@ declare_id!("BY6vsKLyMNhcSLEhaD4iUc2B49PjQ7wkqB4CeoT4eca2");
 
 #[program]
 pub mod fuzzer_with_token {
+
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, transfer_amount: u8) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
+
+        let time = Clock::get().unwrap();
+
+        let rent = Rent::get().unwrap();
+
+        let epoch_schedule = EpochSchedule::get().unwrap();
+
+        msg!("Timestamp: {}", time.unix_timestamp);
+        msg!("Burn Percent: {}", rent.burn_percent);
+        msg!("Rent minimum balance: {}", rent.minimum_balance(48));
+        msg!("Epoch Schedule: {}", epoch_schedule.first_normal_slot);
 
         counter.count = 1;
         counter.authority = ctx.accounts.user_a.key();
@@ -26,6 +38,7 @@ pub mod fuzzer_with_token {
             transfer_amount as u64,
         )?;
 
+        require!(transfer_amount != 50, FuzzerError::AmountLow);
         Ok(())
     }
 
@@ -95,4 +108,10 @@ pub struct Update<'info> {
 pub struct Counter {
     pub authority: Pubkey,
     pub count: u64,
+}
+
+#[error_code]
+pub enum FuzzerError {
+    #[msg("Transfer amount too low")]
+    AmountLow,
 }

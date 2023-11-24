@@ -2,10 +2,29 @@
 validator_startup_timeout = 15000
 
 
-# set for default values
+# contains default values
 [fuzz]
+# Timeout in seconds (default: 10)
 timeout = 10
+# Number of fuzzing iterations (default: 0 [no limit])
 iterations = 0
+# Number of concurrent fuzzing threads (default: 0 [number of CPUs / 2])
+threads = 0
+# Don't close children's stdin, stdout, stderr; can be noisy (default: false)
 keep_output = false
+# Disable ANSI console; use simple log output (default: false)
 verbose = false
+# Exit upon seeing the first crash (default: false)
 exit_upon_crash = false
+# Maximal number of mutations per one run (default: 6)
+mutations_per_run = 6
+# Directory where crashes are saved to (default: "" [workspace directory])
+crashdir = ""
+# Input file extension (e.g. 'swf'), (default: "" ['fuzz'])
+extension = ""
+# Number of seconds this fuzzing session will last (default: 0 [no limit])
+run_time = 0
+# Maximal size of files processed by the fuzzer in bytes (default: 1048576 = 1MB)
+max_file_size = 1048576
+# Save all test-cases (not only the unique ones) by appending the current time-stamp to the filenames (default: false)
+save_all = false

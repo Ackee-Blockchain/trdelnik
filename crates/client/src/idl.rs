@@ -94,10 +94,11 @@
 //! }
 //! ```
 
+use std::path::{Path, PathBuf};
+
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use quote::ToTokens;
 use thiserror::Error;
-
 static ACCOUNT_MOD_PREFIX: &str = "__client_accounts_";
 
 #[derive(Error, Debug)]
@@ -122,8 +123,10 @@ pub struct IdlName {
 #[derive(Debug)]
 pub struct IdlProgram {
     pub name: IdlName,
+    pub path: PathBuf,
     pub id: String,
     pub instruction_account_pairs: Vec<(IdlInstruction, IdlAccountGroup)>,
+    pub program_invocations: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -138,14 +141,28 @@ pub struct IdlAccountGroup {
     pub accounts: Vec<(String, String)>,
 }
 
-pub async fn parse_to_idl_program(name: String, code: &str) -> Result<IdlProgram, Error> {
+pub async fn parse_to_idl_program(
+    name: String,
+    code: &str,
+    path: &Path,
+) -> Result<IdlProgram, Error> {
     let mut static_program_id = None::<syn::ItemStatic>;
     let mut mod_private = None::<syn::ItemMod>;
     let mut mod_instruction = None::<syn::ItemMod>;
     let mut account_mods = Vec::<syn::ItemMod>::new();
+    let mut context_structs = Vec::<syn::ItemStruct>::new();
 
     for item in syn::parse_file(code)?.items.into_iter() {
         match item {
+            syn::Item::Struct(item_struct) => {
+                if let Some(_lt) = &item_struct.generics.lt_token {
+                    if let syn::GenericParam::Lifetime(_lifetime) =
+                        item_struct.generics.params.first().unwrap()
+                    {
+                        context_structs.push(item_struct);
+                    }
+                }
+            }
             syn::Item::Static(item_static) if item_static.ident == "ID" => {
                 static_program_id = Some(item_static);
             }
@@ -166,6 +183,31 @@ pub async fn parse_to_idl_program(name: String, code: &str) -> Result<IdlProgram
         "missing mod instruction",
     ))?;
 
+    let mut program_names = Vec::<String>::new();
+
+    // ------ get Programs from Contex ------
+    context_structs.iter().for_each(|context_struct| {
+        if let syn::Fields::Named(named_fields) = &context_struct.fields {
+            for x in named_fields.named.iter() {
+                if let syn::Type::Path(type_path) = &x.ty {
+                    for y in type_path.path.segments.iter() {
+                        if y.ident == "Program" {
+                            if let syn::PathArguments::AngleBracketed(
+                                angel_bracketed_generic_args,
+                            ) = &y.arguments
+                            {
+                                for z in angel_bracketed_generic_args.args.iter() {
+                                    if let syn::GenericArgument::Type(syn::Type::Path(path)) = z {
+                                        program_names.push(path.path.segments[0].ident.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
     // ------ get program id ------
 
     // input example:
@@ -463,8 +505,10 @@ pub async fn parse_to_idl_program(name: String, code: &str) -> Result<IdlProgram
             upper_camel_case: name.to_upper_camel_case(),
             snake_case: name,
         },
+        path: path.to_path_buf(),
         id: program_id_bytes.into_token_stream().to_string(),
         instruction_account_pairs,
+        program_invocations: program_names,
     })
 }
 

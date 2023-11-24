@@ -1,4 +1,7 @@
-use anyhow::Error;
+use std::env;
+
+use anyhow::Context;
+use anyhow::{Error, Result};
 use clap::{Parser, Subcommand};
 use fehler::throws;
 
@@ -22,8 +25,8 @@ enum Command {
     /// Create a `program_client` crate
     Build {
         /// Anchor project root
-        #[clap(short, long, default_value = "./")]
-        root: String,
+        #[clap(short, long)]
+        root: Option<String>,
     },
     /// Get information about a keypair
     KeyPair {
@@ -31,11 +34,7 @@ enum Command {
         subcmd: KeyPairCommand,
     },
     /// Run program tests
-    Test {
-        /// Anchor project root
-        #[clap(short, long, default_value = "./")]
-        root: String,
-    },
+    Test,
     /// Run and debug fuzz tests
     Fuzz {
         /// Anchor project root
@@ -68,11 +67,34 @@ pub async fn start() {
     match cli.command {
         Command::Build { root } => command::build(root).await?,
         Command::KeyPair { subcmd } => command::keypair(subcmd)?,
-        Command::Test { root } => command::test(root).await?,
+        Command::Test => command::test().await?,
         Command::Fuzz { root, subcmd } => command::fuzz(root, subcmd).await?,
         Command::Localnet => command::localnet().await?,
         Command::Explorer { subcmd } => command::explorer(subcmd).await?,
         Command::Init { skip_fuzzer } => command::init(skip_fuzzer).await?,
         Command::Clean => command::clean().await?,
     }
+}
+
+pub fn discover(searching_for: &str) -> Result<Option<String>> {
+    let current_dir = env::current_dir()?;
+    let mut dir = Some(current_dir.as_path());
+    while let Some(cwd) = dir {
+        for file in std::fs::read_dir(cwd)
+            .with_context(|| format!("Error reading the directory with path: {}", cwd.display()))?
+        {
+            let path = file
+                .with_context(|| {
+                    format!("Error reading the directory with path: {}", cwd.display())
+                })?
+                .path();
+            if let Some(filename) = path.file_name() {
+                if filename.to_str() == Some(searching_for) {
+                    return Ok(Some(cwd.to_string_lossy().to_string()));
+                }
+            }
+        }
+        dir = cwd.parent();
+    }
+    Ok(None)
 }

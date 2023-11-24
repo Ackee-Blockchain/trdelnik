@@ -19,17 +19,21 @@ pub use anyhow::{self, Error};
 
 #[cfg(feature = "fuzzing")]
 pub mod fuzzing {
-    pub use super::{
-        anchor_lang, anchor_lang::system_program::ID as SYSTEM_PROGRAM_ID,
-        solana_sdk::transaction::Transaction, Instruction, Keypair, Pubkey, Signer,
-    };
-    pub use anchor_client::anchor_lang::solana_program::hash::Hash;
+    pub use crate::native_account::*;
+    pub use crate::native_clock::*;
+
+    pub use crate::anchor_lang::{AccountDeserialize, AccountSerialize, InstructionData};
     pub use arbitrary;
     pub use arbitrary::Arbitrary;
     pub use honggfuzz::fuzz;
-    pub use solana_program_test::{
-        processor, tokio::runtime::Runtime, BanksClient, BanksClientError, ProgramTest,
+    pub use solana_program::{
+        account_info::AccountInfo,
+        entrypoint::{self, ProgramResult},
+        native_token::LAMPORTS_PER_SOL,
+        program_pack::*,
+        program_stubs, system_program,
     };
+    pub use solana_sdk::instruction::Instruction;
 }
 
 pub use futures::{self, FutureExt};
@@ -64,11 +68,51 @@ pub use keys::*;
 pub mod idl;
 pub mod program_client_generator;
 
-pub mod test_generator;
-pub use test_generator::TestGenerator;
+pub mod workspace_builder;
+pub use workspace_builder::WorkspaceBuilder;
 
 pub mod error_reporter;
 pub use error_reporter::*;
 
-pub mod cleaner;
-pub use cleaner::*;
+pub mod native_clock;
+pub use native_clock::*;
+
+pub mod native_account;
+pub use native_account::*;
+
+pub mod constants {
+    use std::collections::HashMap;
+
+    pub const PROGRAM_CLIENT_DIRECTORY: &str = ".program_client";
+    pub const CARGO: &str = "Cargo.toml";
+    pub const LIB: &str = "lib.rs";
+    pub const SRC: &str = "src";
+
+    pub const TESTS_WORKSPACE_DIRECTORY: &str = "trdelnik-tests";
+    pub const TEST_DIRECTORY: &str = "tests";
+    pub const TEST: &str = "test.rs";
+
+    pub const FUZZ_DIRECTORY: &str = "src/bin";
+    pub const FUZZ: &str = "fuzz_target.rs";
+    pub const PROGRAM_STUBS: &str = "program_stubs.rs";
+
+    pub const PROGRAM_STUBS_ENTRIES: &str = "// ### \"Entrypoints go above\" ###";
+    pub const HFUZZ_TARGET: &str = "hfuzz_target";
+    pub const HFUZZ_WORKSPACE: &str = "hfuzz_workspace";
+
+    pub const GIT_IGNORE: &str = ".gitignore";
+
+    pub const CLIENT_TOML_TEMPLATE: &str = "/src/templates/program_client/Cargo.toml.tmpl";
+
+    lazy_static::lazy_static! {
+        pub static ref PROCESS_INSTRUCTIONS: HashMap<&'static str, (&'static str, &'static str,&'static str,&'static str)> = HashMap::from([(
+        "Token",
+        (
+            "spl_token::id",
+            "spl_token::processor::Processor::process",
+            "spl-token",
+            "4.0.0"
+        ),
+    )]);
+    }
+}

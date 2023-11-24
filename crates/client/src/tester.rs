@@ -1,14 +1,14 @@
 use crate::{commander::Error, Commander, LocalnetHandle};
 use fehler::throws;
 use log::debug;
-use std::{borrow::Cow, mem};
+use std::path::{Path, PathBuf};
 
 /// `Tester` is used primarily by [`#[trdelnik_test]`](trdelnik_test::trdelnik_test) macro.
 ///
 /// There should be no need to use `Tester` directly.
 #[derive(Default)]
 pub struct Tester {
-    root: Cow<'static, str>,
+    root: PathBuf,
 }
 
 impl Tester {
@@ -18,16 +18,17 @@ impl Tester {
         }
     }
 
-    pub fn with_root(root: impl Into<Cow<'static, str>>) -> Self {
-        Self { root: root.into() }
+    pub fn with_root(root: &str) -> Self {
+        Self {
+            root: Path::new(root).to_path_buf(),
+        }
     }
 
     #[throws]
     pub async fn before(&mut self) -> LocalnetHandle {
         debug!("_____________________");
         debug!("____ BEFORE TEST ____");
-        let commander = Commander::with_root(mem::take(&mut self.root));
-        commander.start_localnet().await?
+        Commander::start_localnet(&self.root).await?
     }
 
     #[throws]

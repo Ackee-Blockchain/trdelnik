@@ -5,9 +5,13 @@ description = "Created with Trdelnik"
 edition = "2021"
 
 [dependencies]
-trdelnik-client = "0.5.0"
 assert_matches = "1.4.0"
-program_client = { path = "../.program_client" }
+
+[dependencies.trdelnik-client]
+version = "0.5.0"
+
+[dependencies.program_client]
+path = "../.program_client"
 
 [dev-dependencies]
 fehler = "1.0.0"

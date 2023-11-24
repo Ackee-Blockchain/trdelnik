@@ -14,11 +14,12 @@ edition = "2021"
 assert_matches = "1.4.0"
 solana-program = "1.16.9"
 spl-token = "4.0.0"
-
+spl-token-lending = "0.2.0"
+serde = "1.0.192"
+solana-sdk-macro = "1.16.9"
 [dependencies.trdelnik-client]
 path = "../../../crates/client"
 features = ["fuzzing"]
-
 [dependencies.program_client]
 path = "../.program_client"
 

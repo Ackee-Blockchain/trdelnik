@@ -6,11 +6,11 @@ use syn::{parse_quote, parse_str};
 /// Disable regenerating the `use` statements with a used imports `use_modules`
 ///
 /// _Note_: See the crate's tests for output example.
-pub fn generate_source_code(idl: Idl, use_modules: &[syn::ItemUse]) -> String {
+pub fn generate_source_code(idl: &Idl, use_modules: &[syn::ItemUse]) -> String {
     let mut output = "// DO NOT EDIT - automatically generated file (except `use` statements inside the `*_instruction` module\n".to_owned();
     let code = idl
         .programs
-        .into_iter()
+        .iter()
         .map(|idl_program| {
             let program_name = idl_program.name.snake_case.replace('-', "_");
             let instruction_module_name = format_ident!("{}_instruction", program_name);
@@ -19,7 +19,7 @@ pub fn generate_source_code(idl: Idl, use_modules: &[syn::ItemUse]) -> String {
 
             let instructions = idl_program
                 .instruction_account_pairs
-                .into_iter()
+                .iter()
                 .fold(
                     Vec::new(),
                     |mut instructions, (idl_instruction, idl_account_group)| {
@@ -30,7 +30,7 @@ pub fn generate_source_code(idl: Idl, use_modules: &[syn::ItemUse]) -> String {
                         let account_struct_name: syn::Ident =
                             parse_str(&idl_account_group.name.upper_camel_case).unwrap();
                         let instruction_name: syn::Ident =
-                            parse_str(&(idl_instruction.name.snake_case + "_ix")).unwrap();
+                            parse_str(&(idl_instruction.name.snake_case.clone() + "_ix")).unwrap();
 
                         let parameters = idl_instruction
                             .parameters

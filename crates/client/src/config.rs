@@ -58,23 +58,60 @@ struct _Fuzz {
     #[serde(default)]
     /// Timeout in seconds (default: 10)
     /// -t
+    /// --timeout
     pub timeout: Option<u16>,
     #[serde(default)]
     /// Number of fuzzing iterations (default: 0 [no limit])
     /// -N
+    /// --iterations
     pub iterations: Option<u64>,
+    #[serde(default)]
+    /// Number of concurrent fuzzing threads (default: number of CPUs / 2)
+    /// -n
+    /// --threads
+    pub threads: Option<u16>,
     #[serde(default)]
     /// Don't close children's stdin, stdout, stderr; can be noisy
     /// -Q
+    /// --keep_output
     pub keep_output: Option<bool>,
     #[serde(default)]
     /// Disable ANSI console; use simple log output
     /// -v
+    /// --verbose
     pub verbose: Option<bool>,
     #[serde(default)]
     /// Exit upon seeing the first crash (default: false)
     /// --exit_upon_crash
     pub exit_upon_crash: Option<bool>,
+    #[serde(default)]
+    /// Maximal number of mutations per one run (default: 6)
+    /// -r
+    /// --mutations_per_run
+    pub mutations_per_run: Option<u16>,
+    #[serde(default)]
+    /// Directory where crashes are saved to (default: workspace directory)
+    /// --crashdir
+    pub crashdir: Option<String>,
+    #[serde(default)]
+    /// Input file extension (e.g. 'swf'), (default: 'fuzz')
+    /// -e
+    /// --extension
+    pub extension: Option<String>,
+    #[serde(default)]
+    /// Number of seconds this fuzzing session will last (default: 0 [no limit])
+    /// --run_time
+    pub run_time: Option<u32>,
+    #[serde(default)]
+    /// Maximal size of files processed by the fuzzer in bytes (default: 1048576 = 1MB)
+    /// -F
+    /// --max_file_size
+    pub max_file_size: Option<u32>,
+    #[serde(default)]
+    /// Save all test-cases (not only the unique ones) by appending the current time-stamp to the filenames (default: false)
+    /// -u
+    /// --save_all
+    pub save_all: Option<bool>,
 }
 impl Default for Fuzz {
     fn default() -> Self {
@@ -82,6 +119,10 @@ impl Default for Fuzz {
             fuzz_args: vec![
                 FuzzArg::new("-t", "--timeout", &10.to_string()),
                 FuzzArg::new("-N", "--iterations", &0.to_string()),
+                FuzzArg::new("-r", "--mutations_per_run", &6.to_string()),
+                FuzzArg::new("-e", "--extension", "fuzz"),
+                FuzzArg::new("", "--run_time", &0.to_string()),
+                FuzzArg::new("-F", "--max_file_size", &1_048_576.to_string()),
             ],
         }
     }
@@ -101,6 +142,14 @@ impl From<_Fuzz> for Fuzz {
         _self
             .fuzz_args
             .push(FuzzArg::new("-N", "--iterations", &iterations.to_string()));
+
+        // threads
+        let threads = _f.threads.unwrap_or(0);
+        if threads > 0 {
+            _self
+                .fuzz_args
+                .push(FuzzArg::new("-n", "--threads", &threads.to_string()));
+        }
 
         // keep_output
         let keep_output = _f.keep_output.unwrap_or(false);
@@ -122,6 +171,45 @@ impl From<_Fuzz> for Fuzz {
             _self
                 .fuzz_args
                 .push(FuzzArg::new("", "--exit_upon_crash", ""));
+        }
+        // mutations_per_run
+        let mutations_per_run = _f.mutations_per_run.unwrap_or(6);
+        _self.fuzz_args.push(FuzzArg::new(
+            "-r",
+            "--mutations_per_run",
+            &mutations_per_run.to_string(),
+        ));
+        // crashdir
+        let crash_dir = _f.crashdir.unwrap_or_default();
+        if !crash_dir.is_empty() {
+            _self
+                .fuzz_args
+                .push(FuzzArg::new("", "--crashdir", &crash_dir));
+        }
+        // extension
+        let extension = _f.extension.unwrap_or_default();
+        if !extension.is_empty() {
+            _self
+                .fuzz_args
+                .push(FuzzArg::new("-e", "--extension", &extension));
+        }
+        // run_time
+        let run_time = _f.run_time.unwrap_or(0);
+        _self
+            .fuzz_args
+            .push(FuzzArg::new("", "--run_time", &run_time.to_string()));
+
+        // max_file_size
+        let max_file_size = _f.max_file_size.unwrap_or(1_048_576);
+        _self.fuzz_args.push(FuzzArg::new(
+            "-F",
+            "--max_file_size",
+            &max_file_size.to_string(),
+        ));
+        // save_all
+        let save_all = _f.save_all.unwrap_or(false);
+        if save_all {
+            _self.fuzz_args.push(FuzzArg::new("-u", "--save_all", ""));
         }
         _self
     }
@@ -246,7 +334,10 @@ mod tests {
         };
 
         let env_var_string = config.get_fuzz_args(String::default());
-        assert_eq!(env_var_string, "-t 10 -N 0 ");
+        assert_eq!(
+            env_var_string,
+            "-t 10 -N 0 -r 6 -e fuzz --run_time 0 -F 1048576 "
+        );
     }
     #[test]
     fn test_merge_and_precedence2() {
@@ -257,7 +348,10 @@ mod tests {
 
         let env_var_string = config.get_fuzz_args("-t 0 -N10 --exit_upon_crash".to_string());
 
-        assert_eq!(env_var_string, "-t 10 -N 0 -t 0 -N10 --exit_upon_crash");
+        assert_eq!(
+            env_var_string,
+            "-t 10 -N 0 -r 6 -e fuzz --run_time 0 -F 1048576 -t 0 -N10 --exit_upon_crash"
+        );
     }
     #[test]
     fn test_merge_and_precedence3() {
@@ -269,7 +363,7 @@ mod tests {
             config.get_fuzz_args("-t 100 -N 5000 -Q -v --exit_upon_crash".to_string());
         assert_eq!(
             env_var_string,
-            "-t 10 -N 0 -t 100 -N 5000 -Q -v --exit_upon_crash"
+            "-t 10 -N 0 -r 6 -e fuzz --run_time 0 -F 1048576 -t 100 -N 5000 -Q -v --exit_upon_crash"
         );
     }
     #[test]
@@ -282,7 +376,20 @@ mod tests {
         let env_var_string = config.get_fuzz_args("-t 10 -N 500 -Q -v --exit_upon_crash -n 15 --mutations_per_run 8 --verifier -W random_dir --crashdir random_dir5 --run_time 666".to_string());
         assert_eq!(
             env_var_string,
-            "-t 10 -N 0 -t 10 -N 500 -Q -v --exit_upon_crash -n 15 --mutations_per_run 8 --verifier -W random_dir --crashdir random_dir5 --run_time 666"
+            "-t 10 -N 0 -r 6 -e fuzz --run_time 0 -F 1048576 -t 10 -N 500 -Q -v --exit_upon_crash -n 15 --mutations_per_run 8 --verifier -W random_dir --crashdir random_dir5 --run_time 666"
+        );
+    }
+    #[test]
+    fn test_merge_and_precedence5() {
+        let config = Config {
+            test: Test::default(),
+            fuzz: Fuzz::default(),
+        };
+
+        let env_var_string = config.get_fuzz_args("-t 10 -N 500 -Q -v --exit_upon_crash -n 15 --verifier -W random_dir --crashdir random_dir5 --run_time 666".to_string());
+        assert_eq!(
+            env_var_string,
+            "-t 10 -N 0 -r 6 -e fuzz --run_time 0 -F 1048576 -t 10 -N 500 -Q -v --exit_upon_crash -n 15 --verifier -W random_dir --crashdir random_dir5 --run_time 666"
         );
     }
 }
