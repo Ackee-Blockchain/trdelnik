@@ -101,18 +101,15 @@ impl Commander {
     /// Builds programs (smart contracts).
     #[throws]
     pub async fn build_programs() {
-        let success = Command::new("cargo")
+        let exit = std::process::Command::new("cargo")
             .arg("build-bpf")
-            .arg("--")
-            // prevent prevent dependency loop:
-            // program tests -> program_client -> program
-            .args(["-Z", "avoid-dev-deps"])
-            .spawn()?
-            .wait()
-            .await?
-            .success();
-        if !success {
-            throw!(Error::BuildProgramsFailed);
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .unwrap();
+
+        if !exit.status.success() {
+            std::process::exit(exit.status.code().unwrap_or(1));
         }
     }
 
@@ -205,6 +202,9 @@ impl Commander {
 
         cargo_toml_data.packages.into_iter().filter(|package| {
             // @TODO less error-prone test if the package is a _program_?
+            // This will only consider Packages where path:
+            // /home/xyz/xyz/trdelnik/trdelnik/examples/example_project/programs/package1
+            // NOTE we can obtain more important information here, only to remember
             if let Some("programs") = package.manifest_path.iter().nth_back(2) {
                 return true;
             }
@@ -219,7 +219,7 @@ impl Commander {
             let absolute_root = fs::canonicalize(root).await?;
 
             let name = package.name;
-            let output = Command::new("cargo")
+            let output = std::process::Command::new("cargo")
                 .arg("+nightly")
                 .arg("rustc")
                 .args(["--package", &name])
@@ -227,7 +227,7 @@ impl Commander {
                 .arg("--")
                 .arg("-Zunpretty=expanded")
                 .output()
-                .await?;
+                .unwrap();
             if output.status.success() {
                 let code = String::from_utf8(output.stdout)?;
                 let path = package
@@ -290,9 +290,10 @@ impl Commander {
     /// The goal of this method is to find all `use` statements defined by the user in the `.program_client`
     /// crate. It solves the problem with regenerating the program client and removing imports defined by
     /// the user.
+    // TODO is this relevant when program_client should not be changed by user ?
     #[throws]
     pub async fn parse_program_client_imports() -> Option<Vec<syn::ItemUse>> {
-        let output = Command::new("cargo")
+        let output = std::process::Command::new("cargo")
             .arg("+nightly")
             .arg("rustc")
             .args(["--package", "program_client"])
@@ -300,28 +301,37 @@ impl Commander {
             .arg("--")
             .arg("-Zunpretty=expanded")
             .output()
-            .await?;
-        let code = String::from_utf8(output.stdout)?;
-        let mut use_modules: Vec<syn::ItemUse> = vec![];
-        for item in syn::parse_file(code.as_str()).unwrap().items.into_iter() {
-            if let syn::Item::Mod(module) = item {
-                let modules = module
-                    .content
-                    .ok_or("account mod: empty content")
-                    .unwrap()
-                    .1
-                    .into_iter();
-                for module in modules {
-                    if let syn::Item::Use(u) = module {
-                        use_modules.push(u);
+            .unwrap();
+
+        if output.status.success() {
+            let code = String::from_utf8(output.stdout)?;
+            let mut use_modules: Vec<syn::ItemUse> = vec![];
+            for item in syn::parse_file(code.as_str()).unwrap().items.into_iter() {
+                if let syn::Item::Mod(module) = item {
+                    let modules = module
+                        .content
+                        .ok_or("account mod: empty content")
+                        .unwrap()
+                        .1
+                        .into_iter();
+                    for module in modules {
+                        if let syn::Item::Use(u) = module {
+                            use_modules.push(u);
+                        }
                     }
                 }
             }
+            if use_modules.is_empty() {
+                use_modules.push(syn::parse_quote! { use trdelnik_client::*; })
+            }
+            Some(use_modules)
+        } else {
+            let mut use_modules: Vec<syn::ItemUse> = vec![];
+            if use_modules.is_empty() {
+                use_modules.push(syn::parse_quote! { use trdelnik_client::*; })
+            }
+            Some(use_modules)
         }
-        if use_modules.is_empty() {
-            use_modules.push(syn::parse_quote! { use trdelnik_client::*; })
-        }
-        Some(use_modules)
     }
 
     #[throws]

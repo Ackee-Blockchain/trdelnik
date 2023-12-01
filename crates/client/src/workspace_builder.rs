@@ -258,6 +258,7 @@ impl WorkspaceBuilder {
 
         match &self.idl {
             Some(idl) => {
+                // TODO Cannot be simplified ?
                 for program in idl.programs.iter() {
                     let dep_client: Value = format!(
                         r#"{} = {{ path = "../{}", features = ["no-entrypoint"] }}"#,
