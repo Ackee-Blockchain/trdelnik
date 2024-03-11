@@ -609,7 +609,7 @@ impl TestGenerator {
             }
             None => {
                 members.push(new_member);
-                println!("{FINISH} [{CARGO_TOML}] with [{member}]");
+                println!("{FINISH} [{CARGO_TOML}] updated with [{member}]");
                 fs::write(cargo, content.to_string()).await?;
             }
         };

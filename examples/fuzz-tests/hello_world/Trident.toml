@@ -36,3 +36,6 @@ save_all = false
 [fuzz]
 # Allow processing of duplicate transactions. Setting to true might speed up fuzzing but can cause false positive crashes (default: false)
 allow_duplicate_txs = false
+# Trident will show statistics after the fuzzing session. This option forces use of honggfuzz parameter
+# `keep_output` as true in order to be able to catch fuzzer stdout. (default: false)
+fuzzing_with_stats = false

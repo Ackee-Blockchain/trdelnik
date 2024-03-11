@@ -42,20 +42,44 @@ impl From<_Test> for Test {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone)]
+pub struct Cfg {
+    pub cfg_identifier: String,
+    pub val: bool,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Fuzz {
-    pub allow_duplicate_txs: bool,
+    pub rust_flags: Vec<Cfg>,
 }
 #[derive(Default, Debug, Deserialize, Clone)]
 struct _Fuzz {
     #[serde(default)]
     pub allow_duplicate_txs: Option<bool>,
+    #[serde(default)]
+    pub fuzzing_with_stats: Option<bool>,
 }
 impl From<_Fuzz> for Fuzz {
-    fn from(_t: _Fuzz) -> Self {
-        Self {
-            allow_duplicate_txs: _t.allow_duplicate_txs.unwrap_or(false),
-        }
+    fn from(_f: _Fuzz) -> Self {
+        let mut _self = Self { rust_flags: vec![] };
+
+        // allow_duplicate_txs
+        let allow_duplicate_txs = _f.allow_duplicate_txs.unwrap_or(false);
+
+        _self.rust_flags.push(Cfg {
+            cfg_identifier: "allow_duplicate_txs".to_string(),
+            val: allow_duplicate_txs,
+        });
+
+        // fuzzing_with_stats
+        let fuzzing_with_stats = _f.fuzzing_with_stats.unwrap_or(false);
+
+        _self.rust_flags.push(Cfg {
+            cfg_identifier: "fuzzing_with_stats".to_string(),
+            val: fuzzing_with_stats,
+        });
+
+        _self
     }
 }
 #[derive(Debug, Deserialize, Clone)]
@@ -367,6 +391,22 @@ impl Config {
         args.push(cli_input);
         args.join(" ")
     }
+    pub fn get_rustflags_args(&self, cli_input: String) -> String {
+        let mut args: Vec<String> = self
+            .fuzz
+            .rust_flags
+            .iter()
+            .map(|arg| {
+                if arg.val {
+                    format!("--cfg {}", arg.cfg_identifier)
+                } else {
+                    "".to_string()
+                }
+            })
+            .collect();
+        args.push(cli_input);
+        args.join(" ")
+    }
     pub fn get_env_arg(&self, env_variable: &str) -> String {
         let expect = format!("{env_variable} not found");
         self.honggfuzz
@@ -401,6 +441,23 @@ mod tests {
                 ],
                 env_variables,
             }
+        }
+    }
+
+    impl Default for Fuzz {
+        fn default() -> Self {
+            let rust_flags = vec![
+                Cfg {
+                    cfg_identifier: "allow_duplicate_txs".to_string(),
+                    val: false,
+                },
+                Cfg {
+                    cfg_identifier: "fuzzing_with_stats".to_string(),
+                    val: false,
+                },
+            ];
+
+            Self { rust_flags }
         }
     }
 
@@ -513,5 +570,79 @@ mod tests {
         assert_eq!(cargo_target_dir, "new_value_x");
         let hfuzz_workspace = config.get_env_arg(HFUZZ_WORKSPACE_ENV);
         assert_eq!(hfuzz_workspace, "new_value_y");
+    }
+
+    #[test]
+    fn test_obtain_rustflags_variable1() {
+        let config = Config {
+            test: Test::default(),
+            honggfuzz: HonggFuzz::default(),
+            fuzz: Fuzz::default(),
+        };
+
+        let rustflags = config.get_rustflags_args("".to_string());
+        let default_rustflags = "  ";
+
+        assert_eq!(rustflags, default_rustflags);
+    }
+    #[test]
+    fn test_obtain_rustflags_variable2() {
+        let config = Config {
+            test: Test::default(),
+            honggfuzz: HonggFuzz::default(),
+            fuzz: Fuzz {
+                rust_flags: vec![Cfg {
+                    cfg_identifier: "fuzzing_with_stats".to_string(),
+                    val: true,
+                }],
+            },
+        };
+
+        let rustflags = config.get_rustflags_args("".to_string());
+        let reference_rustflags = "--cfg fuzzing_with_stats ";
+
+        assert_eq!(rustflags, reference_rustflags);
+    }
+    #[test]
+    fn test_obtain_rustflags_variable3() {
+        let config = Config {
+            test: Test::default(),
+            honggfuzz: HonggFuzz::default(),
+            fuzz: Fuzz {
+                rust_flags: vec![
+                    Cfg {
+                        cfg_identifier: "allow_duplicate_txs".to_string(),
+                        val: true,
+                    },
+                    Cfg {
+                        cfg_identifier: "fuzzing_with_stats".to_string(),
+                        val: false,
+                    },
+                ],
+            },
+        };
+
+        let rustflags = config.get_rustflags_args("".to_string());
+        let reference_rustflags = "--cfg allow_duplicate_txs  ";
+
+        assert_eq!(rustflags, reference_rustflags);
+    }
+    #[test]
+    fn test_obtain_rustflags_variable4() {
+        let config = Config {
+            test: Test::default(),
+            honggfuzz: HonggFuzz::default(),
+            fuzz: Fuzz {
+                rust_flags: vec![Cfg {
+                    cfg_identifier: "allow_duplicate_txs".to_string(),
+                    val: true,
+                }],
+            },
+        };
+
+        let rustflags = config.get_rustflags_args("--cfg fuzzing_with_stats".to_string());
+        let reference_rustflags = "--cfg allow_duplicate_txs --cfg fuzzing_with_stats";
+
+        assert_eq!(rustflags, reference_rustflags);
     }
 }

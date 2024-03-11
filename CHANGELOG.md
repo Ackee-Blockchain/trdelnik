@@ -10,6 +10,7 @@ incremented upon a breaking change and the patch version will be incremented for
 
 ## [Unreleased]
 ### Added
+- feat/fuzzer-stats-logging, an optional statistics output for fuzzing session ([#144](https://github.com/Ackee-Blockchain/trident/pull/144))
 - fix/allow to process duplicate transactions ([#147](https://github.com/Ackee-Blockchain/trident/pull/147))
 - feat/possibility to implement custom transaction error handling ([#145](https://github.com/Ackee-Blockchain/trident/pull/145))
 - feat/support of automatically obtaining fully qualified paths of Data Accounts Custom types for `accounts_snapshots.rs` ([#141](https://github.com/Ackee-Blockchain/trident/pull/141))
