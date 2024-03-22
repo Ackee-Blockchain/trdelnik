@@ -42,6 +42,7 @@ pub mod fuzzing {
     pub use super::fuzzer::accounts_storage::*;
     pub use super::fuzzer::data_builder::build_ix_fuzz_data;
     pub use super::fuzzer::data_builder::*;
+    pub use super::fuzzing_stats::FuzzingStatistics;
 
     pub use super::fuzzer::program_test_client_blocking::ProgramTestClientBlocking;
     pub use super::fuzzer::snapshot::Snapshot;
